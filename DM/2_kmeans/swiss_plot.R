@@ -1,0 +1,13 @@
+data(swiss)
+h.single <- hclust(dist(swiss),method="single")
+h.complete <- hclust(dist(swiss),method="complete")
+h.average <- hclust(dist(swiss),method="average")
+
+library(dendextend)
+par(mfrow = c(3,2))
+plot(h.single, hang = -1)
+h.single %>% as.dendrogram() %>% set("labels_col", k = 3) %>% plot()
+plot(h.complete)
+h.complete %>% as.dendrogram() %>% set("labels_col", k = 3) %>% plot()
+plot(h.average)
+h.average %>% as.dendrogram() %>% set("labels_col", k = 3) %>% plot()
