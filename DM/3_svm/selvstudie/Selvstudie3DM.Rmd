@@ -1,0 +1,140 @@
+---
+title: "Selvstudie 3 DM"
+author: "G3-117 + Simon"
+date: "7/3/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(e1071)
+```
+
+##1. Simulationer
+
+```{r}
+#Data
+library(MASS)
+normals <- list(list(class="c1",mu=c(-6,0),Sigma=c(1,2),n=20),
+                list(class="c1",mu=c(6,0),Sigma=c(2,1),n=20),
+                list(class="c2",mu=c(0,-6),Sigma=c(2,1),n=20),
+                list(class="c2",mu=c(0,6),Sigma=c(1,2),n=20))
+xor.data <- as.data.frame(do.call("rbind",
+                                  lapply(normals,function(x) with(x,mvrnorm(n=n,mu=mu,Sigma=diag(Sigma))))))
+names(xor.data) <- c("x1","x2")
+xor.data$class <-
+  factor(rep(sapply(normals,"[[","class"),sapply(normals,"[[","n")))
+
+#SVM fits med forskellige kernels, og parametre:
+model1= svm(class~.,data = xor.data)
+plot(model1,data = xor.data)
+
+model2= svm(class~.,data = xor.data,kernel = "linear")
+plot(model2,data = xor.data)
+
+model3= svm(class~.,data = xor.data,kernel = "radial",cost=1000,gamma=0.1,epil=0.1)
+model3$nSV
+plot(model3,data = xor.data)
+```
+
+##2. Crabs
+
+```{r}
+data(crabs)
+lcrabs <- log(crabs[,7:8])	# log of attribute vectors in crabs
+crabs2 <- cbind(crabs[1], lcrabs)
+model4 <- svm(sp~.,data=crabs2,kernel = "linear")
+plot(model4 , data = crabs2)
+
+crabs3 <- cbind(crabs[1], crabs[7:8])
+model5 <- svm(sp~.,data=crabs3,kernel = "linear",cross =10)
+model5
+plot(model5 , data = crabs3)
+```
+
+##3. Spam
+
+##4. Support Vector Regression
+
+```{r, include=FALSE}
+#Indlæser data
+svr_data = read.csv("svr_data.csv")
+```
+
+
+```{r}
+# i:
+# Linear model
+fit = lm(Y~X, data = svr_data)
+summary(fit)
+# Plotter data sammen med regressionslinjen
+plot(svr_data$X, svr_data$Y)
+abline(-10.2632,3.9774)
+
+# ii:
+# udregner RMSE
+RMSE = sqrt( mean(fit$residuals^2) ); RMSE
+
+# iii:
+# Foretager support vektor regression
+fit2 = svm(Y~X, data = svr_data); fit2
+pre = predict(fit2, data = svr_data)
+# Plotter data samt de predikterede værdier
+plot(svr_data$X, svr_data$Y, xlab = "x", ylab = "y")
+points(svr_data$X, pre, pch = 8, col = "red")
+# Udregner RMSE for support vektor regressionen
+sqrt( mean(fit2$residuals^2) )
+
+# iv
+# Tuner værdierne for svm-regressionen. For epsilon undersøges værdierne 0,0.01,0.02,...,0.2, og for cost undersøges værdierne 4,8,16,...512.
+tune = tune.svm(Y~X, data = svr_data, epsilon = seq(0,0.2,0.01), cost = 2^(2:9))
+# Fitter den tunede model til data
+Tunefit = tune$best.model
+# Predikterer værdier vha. den tunede model
+TunePre = predict(Tunefit, data = svr_data)
+# Udregner RMSE for den tunede model
+res = svr_data$Y - TunePre
+sqrt(mean(res^2))
+
+# Plotter data samt de predikterede værdier for den lineære model, den ikke-tunede support vektor regression samt den tunede support vektor regression.
+plot(svr_data$X, svr_data$Y, xlab = "x", ylab = "y")
+points(svr_data$X, predict(fit,data=svr_data), pch = 2, col = "green")
+points(svr_data$X, TunePre, pch = 4, col = "blue")
+points(svr_data$X, pre, pch = 8, col = "red")
+
+```
+
+
+##5. Stockori
+
+```{r, include=FALSE}
+library(readr)
+library(e1071)
+stock <- read.csv("stock.csv", header = TRUE)
+```
+
+
+```{r}
+fit <- tune.svm(flower.time ~., data = stock, gamma = seq(0,0.01,0.002), cost = 2^(0:2))
+plot(fit)
+fit$best.parameters
+fit$best.model
+```
+
+```{r}
+fit2 <- svm(flower.time ~., data = stock, gamma = fit$best.parameters$gamma, cost = fit$best.parameters$cost)
+summary(fit2)
+```
+
+```{r}
+stock1 <- stock[1:348,]
+stock2 <- stock[349:697,]
+fit3 <- svm(flower.time ~ ., data = stock1, gamma = 0.008, cost = 2)
+fit3pred <- predict(fit3, stock2)
+(msesvm <- sum((fit3pred - stock2$flower.time)^2)/nrow(stock2))
+
+fit4 <- lm(flower.time ~ ., data = stock1)
+fit4pred <- predict(fit4, stock2)
+(mselm <- sum((fit4pred - stock2$flower.time)^2)/nrow(stock2))
+```
+MSE for svm modellen er mindre end MSE for den lineære model. 
